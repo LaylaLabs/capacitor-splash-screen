@@ -2,14 +2,19 @@ package com.laylalabs.capacitor.lottiesplash;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import com.airbnb.lottie.LottieAnimationView;
 import com.airbnb.lottie.LottieDrawable;
 import com.getcapacitor.JSArray;
@@ -19,12 +24,14 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginConfig;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import java.io.InputStream;
 
 @CapacitorPlugin(name = "LaylaLottieSplash")
 public class LottieSplashPlugin extends Plugin {
     private static final String TAG = "LottieSplashPlugin";
 
     private FrameLayout splashOverlay;
+    private ImageView staticImageView;
     private LottieAnimationView lottieView;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
@@ -45,6 +52,17 @@ public class LottieSplashPlugin extends Plugin {
     private long fadeDurationMs = 400L;
     private boolean autoDismiss = false;
     private long timeoutMs = 12000L;
+    private boolean immersive = true;
+
+    // Configuração de Imagem Estática pré-animação
+    private String staticImagePath = null;
+    private String staticImageScaleType = "fitCenter";
+    private String staticImageBgHex = null;
+
+    // Preservação de estado do sistema para restauração pós-dismissal
+    private Integer originalStatusBarColor = null;
+    private Integer originalNavigationBarColor = null;
+    private Integer originalSystemUiVisibility = null;
 
     @Override
     public void load() {
@@ -77,6 +95,15 @@ public class LottieSplashPlugin extends Plugin {
         autoDismiss = config.getBoolean("autoDismiss", false);
         timeoutMs = (long) config.getInt("timeoutMs", 12000);
         loopMode = config.getString("loopMode", "none");
+        immersive = config.getBoolean("immersive", true);
+
+        // Subdicionário staticImage
+        org.json.JSONObject staticImgObj = config.getObject("staticImage");
+        if (staticImgObj != null) {
+            staticImagePath = staticImgObj.optString("imagePath", null);
+            staticImageScaleType = staticImgObj.optString("scaleType", "fitCenter");
+            staticImageBgHex = staticImgObj.optString("backgroundColor", null);
+        }
 
         // Intro frames [start, end]
         try {
@@ -106,18 +133,74 @@ public class LottieSplashPlugin extends Plugin {
         if (getActivity() == null || splashOverlay != null) return;
 
         try {
-            splashOverlay = new FrameLayout(getActivity());
+            int parsedBgColor;
             try {
-                splashOverlay.setBackgroundColor(Color.parseColor(backgroundColorHex));
+                parsedBgColor = Color.parseColor(backgroundColorHex);
             } catch (Throwable e) {
-                splashOverlay.setBackgroundColor(Color.WHITE);
+                parsedBgColor = Color.WHITE;
             }
+
+            // Aplica modo imersivo (navigation bar + status bar na mesma cor de fundo)
+            applyImmersiveMode(parsedBgColor);
+
+            splashOverlay = new FrameLayout(getActivity());
+            splashOverlay.setBackgroundColor(parsedBgColor);
             splashOverlay.setClickable(true);
             splashOverlay.setFocusable(true);
 
+            // 1. Imagem estática pré-animação (se configurada)
+            if (staticImagePath != null && !staticImagePath.trim().isEmpty()) {
+                Bitmap staticBitmap = loadStaticBitmap(staticImagePath);
+                if (staticBitmap != null) {
+                    staticImageView = new ImageView(getActivity());
+                    staticImageView.setImageBitmap(staticBitmap);
+
+                    ImageView.ScaleType st = ImageView.ScaleType.FIT_CENTER;
+                    if ("centerCrop".equalsIgnoreCase(staticImageScaleType)) {
+                        st = ImageView.ScaleType.CENTER_CROP;
+                    } else if ("centerInside".equalsIgnoreCase(staticImageScaleType)) {
+                        st = ImageView.ScaleType.CENTER_INSIDE;
+                    }
+                    staticImageView.setScaleType(st);
+
+                    if (staticImageBgHex != null) {
+                        try {
+                            staticImageView.setBackgroundColor(Color.parseColor(staticImageBgHex));
+                        } catch (Throwable ignored) {}
+                    }
+
+                    FrameLayout.LayoutParams imgParams = new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    );
+                    imgParams.gravity = Gravity.CENTER;
+                    splashOverlay.addView(staticImageView, imgParams);
+                }
+            }
+
+            // 2. View de animação Lottie
             lottieView = new LottieAnimationView(getActivity());
             lottieView.setAnimation(animationPath);
             lottieView.setSpeed(speed);
+
+            // Transição suave da imagem estática para a animação assim que a composição estiver pronta
+            lottieView.addLottieOnCompositionLoadedListener(composition -> {
+                if (staticImageView != null) {
+                    staticImageView.animate()
+                        .alpha(0f)
+                        .setDuration(250)
+                        .setListener(new AnimatorListenerAdapter() {
+                            @Override
+                            public void onAnimationEnd(Animator animation) {
+                                if (staticImageView != null && staticImageView.getParent() != null) {
+                                    ((ViewGroup) staticImageView.getParent()).removeView(staticImageView);
+                                    staticImageView = null;
+                                }
+                            }
+                        })
+                        .start();
+                }
+            });
 
             boolean hasIntro = (introStartFrame >= 0 && introEndFrame > introStartFrame);
 
@@ -242,6 +325,14 @@ public class LottieSplashPlugin extends Plugin {
         ret.put("fadeDurationMs", fadeDurationMs);
         ret.put("autoDismiss", autoDismiss);
         ret.put("timeoutMs", timeoutMs);
+        ret.put("immersive", immersive);
+        if (staticImagePath != null) {
+            JSObject imgObj = new JSObject();
+            imgObj.put("imagePath", staticImagePath);
+            imgObj.put("scaleType", staticImageScaleType);
+            imgObj.put("backgroundColor", staticImageBgHex);
+            ret.put("staticImage", imgObj);
+        }
         call.resolve(ret);
     }
 
@@ -266,11 +357,128 @@ public class LottieSplashPlugin extends Plugin {
                                     lottieView.cancelAnimation();
                                     lottieView = null;
                                 }
+                                if (staticImageView != null) {
+                                    staticImageView = null;
+                                }
+                                restoreImmersiveMode();
                             }
                         })
                         .start();
                 }
             });
         }
+    }
+
+    private void applyImmersiveMode(int parsedBgColor) {
+        if (!immersive || getActivity() == null || getActivity().getWindow() == null) return;
+
+        try {
+            Window window = getActivity().getWindow();
+            if (originalStatusBarColor == null) {
+                originalStatusBarColor = window.getStatusBarColor();
+            }
+            if (originalNavigationBarColor == null) {
+                originalNavigationBarColor = window.getNavigationBarColor();
+            }
+            if (originalSystemUiVisibility == null) {
+                originalSystemUiVisibility = window.getDecorView().getSystemUiVisibility();
+            }
+
+            window.setStatusBarColor(parsedBgColor);
+            window.setNavigationBarColor(parsedBgColor);
+
+            boolean isDarkBg = isColorDark(parsedBgColor);
+            int flags = window.getDecorView().getSystemUiVisibility();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (isDarkBg) {
+                    flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                } else {
+                    flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                }
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (isDarkBg) {
+                    flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                } else {
+                    flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                }
+            }
+            window.getDecorView().setSystemUiVisibility(flags);
+        } catch (Throwable t) {
+            Log.w(TAG, "Falha ao aplicar modo imersivo: " + t.getMessage());
+        }
+    }
+
+    private void restoreImmersiveMode() {
+        if (!immersive || getActivity() == null || getActivity().getWindow() == null) return;
+
+        try {
+            Window window = getActivity().getWindow();
+            if (originalStatusBarColor != null) {
+                window.setStatusBarColor(originalStatusBarColor);
+            }
+            if (originalNavigationBarColor != null) {
+                window.setNavigationBarColor(originalNavigationBarColor);
+            }
+            if (originalSystemUiVisibility != null) {
+                window.getDecorView().setSystemUiVisibility(originalSystemUiVisibility);
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "Falha ao restaurar modo imersivo: " + t.getMessage());
+        }
+    }
+
+    private boolean isColorDark(int color) {
+        double darkness = 1 - (0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)) / 255;
+        return darkness >= 0.5;
+    }
+
+    private Bitmap loadStaticBitmap(String path) {
+        if (getActivity() == null || path == null || path.trim().isEmpty()) return null;
+        String cleanPath = path.trim();
+
+        // 1. Tenta carregar de assets/
+        try (InputStream is = getActivity().getAssets().open(cleanPath)) {
+            return BitmapFactory.decodeStream(is);
+        } catch (Throwable ignored) {
+        }
+
+        // 2. Tenta remover prefixo 'assets/' se fornecido
+        if (cleanPath.startsWith("assets/")) {
+            try (InputStream is = getActivity().getAssets().open(cleanPath.substring(7))) {
+                return BitmapFactory.decodeStream(is);
+            } catch (Throwable ignored) {
+            }
+        }
+
+        // 3. Tenta carregar de res/drawable pelo nome
+        try {
+            String resName = cleanPath;
+            int dotIdx = resName.lastIndexOf('.');
+            if (dotIdx > 0) {
+                resName = resName.substring(0, dotIdx);
+            }
+            int resId = getActivity().getResources().getIdentifier(resName, "drawable", getActivity().getPackageName());
+            if (resId != 0) {
+                return BitmapFactory.decodeResource(getActivity().getResources(), resId);
+            }
+        } catch (Throwable ignored) {
+        }
+
+        // 4. Tenta carregar de res/mipmap
+        try {
+            String resName = cleanPath;
+            int dotIdx = resName.lastIndexOf('.');
+            if (dotIdx > 0) {
+                resName = resName.substring(0, dotIdx);
+            }
+            int resId = getActivity().getResources().getIdentifier(resName, "mipmap", getActivity().getPackageName());
+            if (resId != 0) {
+                return BitmapFactory.decodeResource(getActivity().getResources(), resId);
+            }
+        } catch (Throwable ignored) {
+        }
+
+        return null;
     }
 }

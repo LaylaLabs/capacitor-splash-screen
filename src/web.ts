@@ -2,7 +2,7 @@ import { WebPlugin } from '@capacitor/core';
 
 import type { LottieSplashConfig, LottieSplashPlugin } from './definitions';
 
-export class LottieSplashWeb extends WebPlugin implements LottieSplashPlugin {
+export class LaylaLottieSplashWeb extends WebPlugin implements LottieSplashPlugin {
   private config: LottieSplashConfig = {
     animationPath: 'splash.json',
     backgroundColor: '#FFFFFF',
@@ -12,6 +12,7 @@ export class LottieSplashWeb extends WebPlugin implements LottieSplashPlugin {
     fadeDurationMs: 400,
     autoDismiss: false,
     timeoutMs: 12000,
+    immersive: true,
   };
 
   async notifyAppReady(): Promise<void> {

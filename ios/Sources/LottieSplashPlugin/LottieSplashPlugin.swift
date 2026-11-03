@@ -33,6 +33,13 @@ public class LottieSplashPlugin: CAPPlugin, CAPBridgedPlugin {
     private var fadeDurationSec: TimeInterval = 0.4
     private var autoDismiss: Bool = false
     private var timeoutMs: Double = 12000.0
+    private var immersive: Bool = true
+
+    // Imagem estática pré-animação
+    private var staticImagePath: String?
+    private var staticImageScaleType: String = "fitCenter"
+    private var staticImageBgHex: String?
+    private var staticImageView: UIImageView?
 
     override public func load() {
         super.load()
@@ -63,6 +70,13 @@ public class LottieSplashPlugin: CAPPlugin, CAPBridgedPlugin {
         self.autoDismiss = config.getBoolean("autoDismiss", false)
         self.timeoutMs = Double(config.getInt("timeoutMs", 12000))
         self.loopMode = config.getString("loopMode", "none")
+        self.immersive = config.getBoolean("immersive", true)
+
+        if let staticDict = config.getObject("staticImage") {
+            self.staticImagePath = staticDict["imagePath"] as? String
+            self.staticImageScaleType = (staticDict["scaleType"] as? String) ?? "fitCenter"
+            self.staticImageBgHex = staticDict["backgroundColor"] as? String
+        }
 
         if let introArr = config.getArray("introFrames") as? [NSNumber], introArr.count >= 2 {
             self.introStartFrame = CGFloat(truncating: introArr[0])
@@ -87,6 +101,30 @@ public class LottieSplashPlugin: CAPPlugin, CAPBridgedPlugin {
         overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         overlay.isUserInteractionEnabled = true
 
+        // 1. Imagem estática pré-animação
+        if let staticPath = staticImagePath, !staticPath.isEmpty {
+            var img: UIImage? = UIImage(named: staticPath)
+            if img == nil {
+                img = UIImage(contentsOfFile: Bundle.main.path(forResource: staticPath, ofType: nil) ?? "")
+            }
+            if let image = img {
+                let iv = UIImageView(image: image)
+                if staticImageScaleType == "centerCrop" {
+                    iv.contentMode = .scaleAspectFill
+                    iv.clipsToBounds = true
+                } else {
+                    iv.contentMode = .scaleAspectFit
+                }
+                iv.frame = overlay.bounds
+                iv.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                if let bg = staticImageBgHex {
+                    iv.backgroundColor = colorFromHex(bg)
+                }
+                overlay.addSubview(iv)
+                self.staticImageView = iv
+            }
+        }
+
         let animation = LottieAnimationView(name: animationPath)
         animation.contentMode = .scaleAspectFit
         animation.animationSpeed = speed
@@ -110,6 +148,15 @@ public class LottieSplashPlugin: CAPPlugin, CAPBridgedPlugin {
 
         self.splashOverlay = overlay
         self.lottieView = animation
+
+        if let staticIv = self.staticImageView {
+            UIView.animate(withDuration: 0.25, animations: {
+                staticIv.alpha = 0.0
+            }) { _ in
+                staticIv.removeFromSuperview()
+                self.staticImageView = nil
+            }
+        }
 
         let hasIntro = (introStartFrame >= 0 && introEndFrame > introStartFrame)
 

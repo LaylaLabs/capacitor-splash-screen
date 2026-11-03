@@ -3,9 +3,9 @@ import { registerPlugin } from '@capacitor/core';
 import type { LottieSplashPlugin } from './definitions';
 
 const LaylaLottieSplash = registerPlugin<LottieSplashPlugin>('LaylaLottieSplash', {
-  web: () => import('./web').then((m) => new m.LottieSplashWeb()),
+  web: () => import('./web').then((m) => new m.LaylaLottieSplashWeb()),
 });
 
 export * from './definitions';
-export { LaylaLottieSplash, LaylaLottieSplash as LottieSplash };
+export { LaylaLottieSplash };
 export default LaylaLottieSplash;
