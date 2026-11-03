@@ -6,7 +6,7 @@ import Lottie
 @objc(LottieSplashPlugin)
 public class LottieSplashPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "LottieSplashPlugin"
-    public let jsName = "LottieSplash"
+    public let jsName = "LaylaLottieSplash"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "notifyAppReady", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "hide", returnType: CAPPluginReturnPromise),

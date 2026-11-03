@@ -26,7 +26,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   plugins: {
-    LottieSplash: {
+    LaylaLottieSplash: {
       animationPath: 'splash.json',
       backgroundColor: '#E55934',
       introFrames: [0, 130],

@@ -20,7 +20,7 @@ import com.getcapacitor.PluginConfig;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
-@CapacitorPlugin(name = "LottieSplash")
+@CapacitorPlugin(name = "LaylaLottieSplash")
 public class LottieSplashPlugin extends Plugin {
     private static final String TAG = "LottieSplashPlugin";
 
