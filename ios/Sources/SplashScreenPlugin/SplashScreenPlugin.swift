@@ -317,3 +317,4 @@ public class LaylaLottieSplash: SplashScreenPlugin {}
 
 @objc(LottieSplashPlugin)
 open class LottieSplashPlugin: SplashScreenPlugin {}
+

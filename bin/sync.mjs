@@ -151,7 +151,8 @@ function syncIOS(projectRoot, config) {
 }
 
 function run() {
-  const targetDir = process.argv[2] ? path.resolve(process.argv[2]) : findProjectRoot();
+  const args = process.argv.slice(2).filter((a) => a !== 'sync');
+  const targetDir = args[0] ? path.resolve(args[0]) : findProjectRoot();
   console.log(`[layla-splash] Localizando configuração em ${targetDir}...`);
   const config = parseSplashConfig(targetDir);
 
@@ -167,3 +168,4 @@ function run() {
 }
 
 run();
+

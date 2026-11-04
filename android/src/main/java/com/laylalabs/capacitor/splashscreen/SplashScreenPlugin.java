@@ -445,3 +445,4 @@ public class SplashScreenPlugin extends Plugin {
         return darkness >= 0.5;
     }
 }
+
