@@ -3,9 +3,9 @@ import UIKit
 import Capacitor
 import Lottie
 
-@objc(LottieSplashPlugin)
-public class LottieSplashPlugin: CAPPlugin, CAPBridgedPlugin {
-    public let identifier = "LottieSplashPlugin"
+@objc(LaylaLottieSplash)
+public class LaylaLottieSplash: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "LaylaLottieSplash"
     public let jsName = "LaylaLottieSplash"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "notifyAppReady", returnType: CAPPluginReturnPromise),
@@ -34,6 +34,7 @@ public class LottieSplashPlugin: CAPPlugin, CAPBridgedPlugin {
     private var autoDismiss: Bool = false
     private var timeoutMs: Double = 12000.0
     private var immersive: Bool = true
+    private var previousStatusBarStyle: UIStatusBarStyle?
 
     // Imagem estática pré-animação
     private var staticImagePath: String?
@@ -96,10 +97,30 @@ public class LottieSplashPlugin: CAPPlugin, CAPBridgedPlugin {
         guard let parentView = bridge?.viewController?.view else { return }
         if splashOverlay != nil { return }
 
-        let overlay = UIView(frame: parentView.bounds)
-        overlay.backgroundColor = colorFromHex(backgroundColorHex)
+        // Suporte imersivo: ancora na window para cobrir Dynamic Island/Notch e barras do sistema
+        var targetContainer: UIView = parentView
+        if immersive {
+            if let window = parentView.window ?? UIApplication.shared.windows.first(where: { $0.isKeyWindow }) {
+                targetContainer = window
+            }
+        }
+
+        let bgColor = colorFromHex(backgroundColorHex)
+        let overlay = UIView(frame: targetContainer.bounds)
+        overlay.backgroundColor = bgColor
         overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         overlay.isUserInteractionEnabled = true
+
+        // Ajusta status bar style imersivo com base na luminosidade do fundo
+        if immersive {
+            self.previousStatusBarStyle = UIApplication.shared.statusBarStyle
+            let isDarkBg = isColorDark(bgColor)
+            if #available(iOS 13.0, *) {
+                UIApplication.shared.setStatusBarStyle(isDarkBg ? .lightContent : .darkContent, animated: true)
+            } else {
+                UIApplication.shared.setStatusBarStyle(isDarkBg ? .lightContent : .default, animated: true)
+            }
+        }
 
         // 1. Imagem estática pré-animação
         if let staticPath = staticImagePath, !staticPath.isEmpty {
@@ -131,8 +152,8 @@ public class LottieSplashPlugin: CAPPlugin, CAPBridgedPlugin {
 
         let size: CGFloat = sizeDp
         animation.frame = CGRect(
-            x: (parentView.bounds.width - size) / 2.0,
-            y: (parentView.bounds.height - size) / 2.0,
+            x: (targetContainer.bounds.width - size) / 2.0,
+            y: (targetContainer.bounds.height - size) / 2.0,
             width: size,
             height: size
         )
@@ -144,7 +165,7 @@ public class LottieSplashPlugin: CAPPlugin, CAPBridgedPlugin {
         ]
 
         overlay.addSubview(animation)
-        parentView.addSubview(overlay)
+        targetContainer.addSubview(overlay)
 
         self.splashOverlay = overlay
         self.lottieView = animation
@@ -229,7 +250,8 @@ public class LottieSplashPlugin: CAPPlugin, CAPBridgedPlugin {
             "sizeDp": Double(sizeDp),
             "fadeDurationMs": Int(fadeDurationSec * 1000.0),
             "autoDismiss": autoDismiss,
-            "timeoutMs": timeoutMs
+            "timeoutMs": timeoutMs,
+            "immersive": immersive
         ])
     }
 
@@ -238,6 +260,12 @@ public class LottieSplashPlugin: CAPPlugin, CAPBridgedPlugin {
         isDismissing = true
 
         DispatchQueue.main.async { [weak self] in
+            // Restaura o estilo do status bar se foi alterado pelo modo imersivo
+            if let prevStyle = self?.previousStatusBarStyle {
+                UIApplication.shared.setStatusBarStyle(prevStyle, animated: true)
+                self?.previousStatusBarStyle = nil
+            }
+
             UIView.animate(withDuration: self?.fadeDurationSec ?? 0.4, animations: {
                 overlay.alpha = 0.0
             }) { [weak self] _ in
@@ -247,6 +275,13 @@ public class LottieSplashPlugin: CAPPlugin, CAPBridgedPlugin {
                 self?.lottieView = nil
             }
         }
+    }
+
+    private func isColorDark(_ color: UIColor) -> Bool {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        color.getRed(&r, green: &g, blue: &b, alpha: &a)
+        let luminance = 0.299 * r + 0.587 * g + 0.114 * b
+        return luminance < 0.5
     }
 
     private func colorFromHex(_ hex: String) -> UIColor {
@@ -267,3 +302,9 @@ public class LottieSplashPlugin: CAPPlugin, CAPBridgedPlugin {
         )
     }
 }
+
+/**
+ * Backward compatibility alias for legacy Objective-C / Swift imports
+ */
+@objc(LottieSplashPlugin)
+open class LottieSplashPlugin: LaylaLottieSplash {}
