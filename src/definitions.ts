@@ -1,26 +1,5 @@
 export type LottieLoopMode = 'none' | 'full' | 'range';
 
-export type ScaleType = 'fitCenter' | 'centerCrop' | 'centerInside';
-
-export interface StaticImageConfig {
-  /**
-   * File name or path of the static splash image (in assets or drawable on Android, app bundle on iOS).
-   * e.g., "splash_static.png"
-   */
-  imagePath: string;
-
-  /**
-   * Image scale type.
-   * @default "fitCenter"
-   */
-  scaleType?: ScaleType;
-
-  /**
-   * Optional custom background color for the static image view container.
-   */
-  backgroundColor?: string;
-}
-
 export interface LottieSplashConfig {
   /**
    * File name or path of the Lottie animation JSON file.
@@ -90,11 +69,6 @@ export interface LottieSplashConfig {
    * @default 12000
    */
   timeoutMs?: number;
-
-  /**
-   * Static image configuration displayed immediately before the Lottie animation begins.
-   */
-  staticImage?: StaticImageConfig;
 
   /**
    * Immersive mode: tints the system navigation bar (Home/Back/Recent buttons) and status bar
