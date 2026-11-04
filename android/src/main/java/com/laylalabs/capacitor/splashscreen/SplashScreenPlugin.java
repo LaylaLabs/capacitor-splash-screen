@@ -75,11 +75,11 @@ public class SplashScreenPlugin extends Plugin {
     @Override
     public void load() {
         super.load();
-        setReady(false);
+        setReady(true);
         parseConfiguration();
 
         if (getActivity() != null) {
-            getActivity().runOnUiThread(this::setupSplash);
+            setupSplash();
             // Watchdog de segurança
             if (timeoutMs > 0) {
                 handler.postDelayed(this::dismissSplashWithFade, timeoutMs);
@@ -227,11 +227,69 @@ public class SplashScreenPlugin extends Plugin {
 
                 // Modo Lottie Animado
                 lottieView = new LottieAnimationView(getActivity());
+                lottieView.setAnimation(assetName);
                 lottieView.setSpeed(speed);
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    lottieView.setForceDarkAllowed(false);
+                final boolean hasIntro = (introStartFrame >= 0 && introEndFrame > introStartFrame);
+
+                if (hasIntro) {
+                    lottieView.setMinAndMaxFrame(introStartFrame, introEndFrame);
+                    lottieView.setRepeatCount(0); // Toca a introdução uma única vez
+
+                    // Ouve a conclusão da introdução (quadro introEndFrame)
+                    lottieView.addAnimatorListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            if (isDismissing) return;
+
+                            if (!hasCompletedIntro) {
+                                hasCompletedIntro = true;
+
+                                // Se o app/Nuxt já concluiu o carregamento, finaliza com fade suave imediatamente
+                                if (isAppReady || autoDismiss) {
+                                    dismissSplashWithFade();
+                                } else {
+                                    // Se o Nuxt ainda está processando, entra no loop contínuo
+                                    if ("range".equals(loopMode) && loopStartFrame >= 0 && loopEndFrame > loopStartFrame) {
+                                        lottieView.post(() -> {
+                                            if (isDismissing || lottieView == null) return;
+                                            lottieView.setMinAndMaxFrame(loopStartFrame, loopEndFrame);
+                                            lottieView.setRepeatCount(LottieDrawable.INFINITE);
+                                            lottieView.playAnimation();
+                                        });
+                                    } else if ("full".equals(loopMode)) {
+                                        lottieView.post(() -> {
+                                            if (isDismissing || lottieView == null) return;
+                                            lottieView.setMinAndMaxFrame(0, (int) lottieView.getMaxFrame());
+                                            lottieView.setRepeatCount(LottieDrawable.INFINITE);
+                                            lottieView.playAnimation();
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    hasCompletedIntro = true;
+                    if ("range".equals(loopMode) && loopStartFrame >= 0 && loopEndFrame > loopStartFrame) {
+                        lottieView.setMinAndMaxFrame(loopStartFrame, loopEndFrame);
+                        lottieView.setRepeatCount(LottieDrawable.INFINITE);
+                    } else if ("full".equals(loopMode)) {
+                        lottieView.setRepeatCount(LottieDrawable.INFINITE);
+                    } else {
+                        lottieView.setRepeatCount(0);
+                        if (autoDismiss) {
+                            lottieView.addAnimatorListener(new AnimatorListenerAdapter() {
+                                @Override
+                                public void onAnimationEnd(Animator animation) {
+                                    dismissSplashWithFade();
+                                }
+                            });
+                        }
+                    }
                 }
+
+                lottieView.playAnimation();
 
                 float density = getActivity().getResources().getDisplayMetrics().density;
                 int sizeInPx = (int) (sizeDp * density);
@@ -239,79 +297,24 @@ public class SplashScreenPlugin extends Plugin {
                 params.gravity = Gravity.CENTER;
                 splashOverlay.addView(lottieView, params);
 
-                final boolean hasIntro = (introStartFrame >= 0 && introEndFrame > introStartFrame);
-                final String finalAssetName = assetName;
-
-                // 1. Configuração e início da reprodução apenas quando a composição estiver carregada em memória
-                lottieView.addLottieOnCompositionLoadedListener(composition -> {
-                    Log.i(TAG, "Lottie composition carregada com sucesso [" + finalAssetName + "]: frames " + composition.getStartFrame() + " a " + composition.getEndFrame());
-
-                    if (hasIntro) {
-                        lottieView.setMinAndMaxFrame(introStartFrame, introEndFrame);
-                        lottieView.setRepeatCount(0);
-                    } else if ("range".equals(loopMode) && loopStartFrame >= 0 && loopEndFrame > loopStartFrame) {
-                        lottieView.setMinAndMaxFrame(loopStartFrame, loopEndFrame);
-                        lottieView.setRepeatCount(LottieDrawable.INFINITE);
-                    } else if ("full".equals(loopMode)) {
-                        lottieView.setMinAndMaxFrame(0, (int) composition.getEndFrame());
-                        lottieView.setRepeatCount(LottieDrawable.INFINITE);
-                    } else {
-                        lottieView.setRepeatCount(0);
-                    }
-
-                    lottieView.playAnimation();
-
-                    // Handshake: libera a SplashScreen nativa apenas quando o Lottie já começou a tocar
-                    setReady(true);
-                });
-
-                // 2. Falha de carregamento: fallback seguro
-                lottieView.setFailureListener(result -> {
-                    Log.e(TAG, "Falha ao carregar animação Lottie: " + finalAssetName, result);
-                    hasCompletedIntro = true;
-                    setReady(true);
-                });
-
-                // 3. Listener de transição de fim de intro
-                lottieView.addAnimatorListener(new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        if (isDismissing) return;
-
-                        if (!hasCompletedIntro) {
-                            hasCompletedIntro = true;
-
-                            if (isAppReady || autoDismiss) {
-                                dismissSplashWithFade();
-                            } else {
-                                if ("range".equals(loopMode) && loopStartFrame >= 0 && loopEndFrame > loopStartFrame) {
-                                    lottieView.post(() -> {
-                                        if (isDismissing || lottieView == null) return;
-                                        lottieView.setMinAndMaxFrame(loopStartFrame, loopEndFrame);
-                                        lottieView.setRepeatCount(LottieDrawable.INFINITE);
-                                        lottieView.playAnimation();
-                                    });
-                                } else if ("full".equals(loopMode)) {
-                                    lottieView.post(() -> {
-                                        if (isDismissing || lottieView == null) return;
-                                        lottieView.setMinAndMaxFrame(0, (int) lottieView.getMaxFrame());
-                                        lottieView.setRepeatCount(LottieDrawable.INFINITE);
-                                        lottieView.playAnimation();
-                                    });
-                                }
-                            }
-                        }
-                    }
-                });
-
-                // Dispara o carregamento do arquivo Lottie nos assets
-                lottieView.setAnimation(finalAssetName);
-
             } else {
                 // Modo Estático (sem animação Lottie)
                 hasCompletedIntro = true;
-                setReady(true);
             }
+
+            getActivity().addContentView(splashOverlay, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            ));
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                splashOverlay.setForceDarkAllowed(false);
+                if (lottieView != null) {
+                    lottieView.setForceDarkAllowed(false);
+                }
+            }
+
+            setReady(true);
 
         } catch (Throwable t) {
             Log.e(TAG, "Falha ao inicializar LaylaSplashScreen: " + t.getMessage(), t);
