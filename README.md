@@ -10,7 +10,16 @@ Native 2-phase Lottie splash screen plugin for Capacitor with seamless frame-ran
 - **Flexible Loop Modes:** Choose between `none`, `full`, or custom `range`.
 - **Framework Agnostic:** Compatible with Nuxt, Next, React, Vue, Svelte, or vanilla Capacitor.
 
-## Install
+## Install (GitHub Packages)
+
+Configure your project `.npmrc` to resolve the `@laylalabs` scope from GitHub Packages:
+
+```ini
+@laylalabs:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+Then install via `pnpm`:
 
 ```bash
 pnpm add @laylalabs/capacitor-lottie-splash

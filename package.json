@@ -16,6 +16,9 @@
   ],
   "author": "LaylaLabs <dev@laylalabs.com>",
   "license": "MIT",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/LaylaLabs/capacitor-lottie-splash.git"
