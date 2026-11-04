@@ -1,19 +1,25 @@
 export type LottieLoopMode = 'none' | 'full' | 'range';
 
-export interface LottieSplashConfig {
+export interface SplashAnimationConfig {
   /**
    * File name or path of the Lottie animation JSON file.
    * On Android: relative to assets/ (e.g., "ninheco_splash.json")
    * On iOS: file name in the main app bundle (e.g., "ninheco_splash.json")
    * @default "splash.json"
    */
-  animationPath?: string;
+  path?: string;
 
   /**
-   * Background color of the splash overlay in Hex (#RRGGBB or #AARRGGBB).
-   * @default "#FFFFFF"
+   * Animation playback speed multiplier.
+   * @default 1.0
    */
-  backgroundColor?: string;
+  speed?: number;
+
+  /**
+   * Dimension in Density-independent Pixels (DP) for the centered Lottie animation view.
+   * @default 260
+   */
+  sizeDp?: number;
 
   /**
    * Intro animation frames [startFrame, endFrame].
@@ -37,18 +43,29 @@ export interface LottieSplashConfig {
    * @example [130, 310]
    */
   loopFrames?: [number, number];
+}
+
+export interface SplashScreenConfig {
+  /**
+   * Background color of the splash screen in Hex (#RRGGBB or #AARRGGBB).
+   * Serves as the Single Source of Truth (SSOT) for both the 0ms static window
+   * and the runtime overlay.
+   * @default "#FFFFFF"
+   */
+  backgroundColor?: string;
 
   /**
-   * Animation playback speed multiplier.
-   * @default 1.0
+   * Path or resource identifier for the static launch icon displayed at millisecond zero.
+   * On Android: drawable/mipmap name (e.g., "splash_logo").
+   * On iOS: Image set name in Assets catalog (e.g., "SplashLogo").
    */
-  speed?: number;
+  iconPath?: string;
 
   /**
-   * Dimension in Density-independent Pixels (DP) for the centered Lottie animation view.
-   * @default 260
+   * Optional Lottie vector animation configuration.
+   * If omitted, the splash screen acts as a pure native static splash with smooth fade-out.
    */
-  sizeDp?: number;
+  animation?: SplashAnimationConfig;
 
   /**
    * Duration of the smooth fade-out dismissal animation in milliseconds.
@@ -77,9 +94,23 @@ export interface LottieSplashConfig {
    * @default true
    */
   immersive?: boolean;
+
+  // Backwards compatibility for root-level animation fields
+  /** @deprecated Use animation.path instead */
+  animationPath?: string;
+  /** @deprecated Use animation.speed instead */
+  speed?: number;
+  /** @deprecated Use animation.sizeDp instead */
+  sizeDp?: number;
+  /** @deprecated Use animation.introFrames instead */
+  introFrames?: [number, number];
+  /** @deprecated Use animation.loopMode instead */
+  loopMode?: LottieLoopMode;
+  /** @deprecated Use animation.loopFrames instead */
+  loopFrames?: [number, number];
 }
 
-export interface LottieSplashPlugin {
+export interface SplashScreenPlugin {
   /**
    * Signals that the application (Nuxt/Vue/React) has mounted and finished its initial render.
    * If the intro phase is still playing, the splash waits for the intro to finish,
@@ -101,5 +132,9 @@ export interface LottieSplashPlugin {
   /**
    * Returns the active configuration parsed from capacitor.config.ts.
    */
-  getConfig(): Promise<LottieSplashConfig>;
+  getConfig(): Promise<SplashScreenConfig>;
 }
+
+// Backwards-compatibility aliases
+export type LottieSplashConfig = SplashScreenConfig;
+export type LottieSplashPlugin = SplashScreenPlugin;

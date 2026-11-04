@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "LaylalabsCapacitorLottieSplash",
+    name: "LaylalabsCapacitorSplashScreen",
     platforms: [.iOS(.v14)],
     products: [
         .library(
-            name: "LaylalabsCapacitorLottieSplash",
-            targets: ["LottieSplashPlugin"])
+            name: "LaylalabsCapacitorSplashScreen",
+            targets: ["SplashScreenPlugin"])
     ],
     dependencies: [
         .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "7.0.0"),
@@ -15,11 +15,11 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "LottieSplashPlugin",
+            name: "SplashScreenPlugin",
             dependencies: [
                 .product(name: "Capacitor", package: "capacitor-swift-pm"),
                 .product(name: "Lottie", package: "lottie-ios")
             ],
-            path: "ios/Sources/LottieSplashPlugin")
+            path: "ios/Sources/SplashScreenPlugin")
     ]
 )

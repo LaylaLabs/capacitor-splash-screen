@@ -1,14 +1,10 @@
 import { WebPlugin } from '@capacitor/core';
 
-import type { LottieSplashConfig, LottieSplashPlugin } from './definitions';
+import type { SplashScreenConfig, SplashScreenPlugin } from './definitions';
 
-export class LaylaLottieSplashWeb extends WebPlugin implements LottieSplashPlugin {
-  private config: LottieSplashConfig = {
-    animationPath: 'splash.json',
+export class LaylaSplashScreenWeb extends WebPlugin implements SplashScreenPlugin {
+  private config: SplashScreenConfig = {
     backgroundColor: '#FFFFFF',
-    loopMode: 'none',
-    speed: 1.0,
-    sizeDp: 260,
     fadeDurationMs: 400,
     autoDismiss: false,
     timeoutMs: 12000,
@@ -17,23 +13,26 @@ export class LaylaLottieSplashWeb extends WebPlugin implements LottieSplashPlugi
 
   async notifyAppReady(): Promise<void> {
     if (typeof window !== 'undefined') {
-      console.debug('[LottieSplashWeb] notifyAppReady received');
+      console.debug('[LaylaSplashScreenWeb] notifyAppReady received');
     }
   }
 
   async hide(): Promise<void> {
     if (typeof window !== 'undefined') {
-      console.debug('[LottieSplashWeb] hide received');
+      console.debug('[LaylaSplashScreenWeb] hide received');
     }
   }
 
   async show(): Promise<void> {
     if (typeof window !== 'undefined') {
-      console.debug('[LottieSplashWeb] show received');
+      console.debug('[LaylaSplashScreenWeb] show received');
     }
   }
 
-  async getConfig(): Promise<LottieSplashConfig> {
+  async getConfig(): Promise<SplashScreenConfig> {
     return this.config;
   }
 }
+
+// Backwards-compatibility alias
+export class LaylaLottieSplashWeb extends LaylaSplashScreenWeb {}

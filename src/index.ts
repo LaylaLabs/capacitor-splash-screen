@@ -1,11 +1,14 @@
 import { registerPlugin } from '@capacitor/core';
 
-import type { LottieSplashPlugin } from './definitions';
+import type { SplashScreenPlugin } from './definitions';
 
-const LaylaLottieSplash = registerPlugin<LottieSplashPlugin>('LaylaLottieSplash', {
-  web: () => import('./web').then((m) => new m.LaylaLottieSplashWeb()),
+const LaylaSplashScreen = registerPlugin<SplashScreenPlugin>('LaylaSplashScreen', {
+  web: () => import('./web').then((m) => new m.LaylaSplashScreenWeb()),
 });
 
+// Alias for backwards compatibility
+const LaylaLottieSplash = LaylaSplashScreen;
+
 export * from './definitions';
-export { LaylaLottieSplash };
-export default LaylaLottieSplash;
+export { LaylaSplashScreen, LaylaLottieSplash };
+export default LaylaSplashScreen;
