@@ -101,7 +101,15 @@ public class SplashScreenPlugin extends Plugin {
         if (animObj != null) {
             hasAnimation = true;
             animationPath = animObj.optString("path", config.getString("animationPath", "splash.json"));
-            speed = (float) animObj.optDouble("speed", config.getDouble("speed", 1.0));
+            
+            float defaultSpeed = 1.0f;
+            try {
+                String speedStr = config.getString("speed", "1.0");
+                defaultSpeed = Float.parseFloat(speedStr);
+            } catch (Throwable ignored) {
+            }
+            speed = (float) animObj.optDouble("speed", (double) defaultSpeed);
+
             sizeDp = animObj.optInt("sizeDp", config.getInt("sizeDp", 260));
             loopMode = animObj.optString("loopMode", config.getString("loopMode", "none"));
 
