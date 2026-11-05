@@ -120,20 +120,6 @@ export interface SplashScreenConfig {
    * @default true
    */
   immersive?: boolean;
-
-  // Backwards compatibility for root-level animation fields
-  /** @deprecated Use animation.path instead */
-  animationPath?: string;
-  /** @deprecated Use animation.speed instead */
-  speed?: number;
-  /** @deprecated Use animation.sizeDp instead */
-  sizeDp?: number;
-  /** @deprecated Use animation.introFrames instead */
-  introFrames?: [number, number];
-  /** @deprecated Use animation.loopMode instead */
-  loopMode?: LottieLoopMode;
-  /** @deprecated Use animation.loopFrames instead */
-  loopFrames?: [number, number];
 }
 
 export interface SplashScreenPlugin {
@@ -161,10 +147,6 @@ export interface SplashScreenPlugin {
   getConfig(): Promise<SplashScreenConfig>;
 }
 
-// Backwards-compatibility aliases
-export type LottieSplashConfig = SplashScreenConfig;
-export type LottieSplashPlugin = SplashScreenPlugin;
-
 declare module '@capacitor/cli' {
   interface PluginsConfig {
     /**
@@ -172,10 +154,5 @@ declare module '@capacitor/cli' {
      * Manages cold-start launch assets, native Android/iOS 0ms handshake, Lottie animations, and smooth transitions.
      */
     LaylaSplashScreen?: SplashScreenConfig;
-
-    /**
-     * @deprecated Legacy alias for backwards compatibility
-     */
-    LottieSplash?: SplashScreenConfig;
   }
 }

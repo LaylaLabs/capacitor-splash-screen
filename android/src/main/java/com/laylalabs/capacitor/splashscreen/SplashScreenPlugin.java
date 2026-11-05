@@ -39,11 +39,9 @@ public class SplashScreenPlugin extends Plugin {
      * a imagem estática canônica desde o milissegundo zero até a transição fluida para o Lottie.
      */
     public static volatile boolean isReady = false;
-    public static volatile boolean isLottieReady = false; // Alias para retrocompatibilidade
 
     public static void setReady(boolean ready) {
         isReady = ready;
-        isLottieReady = ready;
     }
 
     private FrameLayout splashOverlay;
@@ -153,47 +151,6 @@ public class SplashScreenPlugin extends Plugin {
 
             // Padrão inteligente: se não houver frames de corte e loop não foi desativado explicitamente, faz loop completo
             if ("none".equals(loopMode) && introStartFrame < 0 && loopStartFrame < 0 && !animObj.has("loop")) {
-                loopMode = "full";
-            }
-        } else if (config.getString("animationPath") != null) {
-            // 2. Retrocompatibilidade: campos na raiz
-            hasAnimation = true;
-            animationPath = config.getString("animationPath", "splash.json");
-            try {
-                String speedStr = config.getString("speed", "1.0");
-                speed = Float.parseFloat(speedStr);
-            } catch (Throwable ignored) {
-                speed = 1.0f;
-            }
-            sizeDp = config.getInt("sizeDp", 0);
-            fullscreen = config.getBoolean("fullscreen", sizeDp <= 0);
-            loopMode = config.getString("loopMode", "none");
-            if (config.getBoolean("loop", false)) {
-                loopMode = "full";
-            }
-
-            try {
-                String[] introArr = config.getArray("introFrames");
-                if (introArr != null && introArr.length >= 2) {
-                    introStartFrame = Integer.parseInt(introArr[0].trim());
-                    introEndFrame = Integer.parseInt(introArr[1].trim());
-                }
-            } catch (Throwable ignored) {
-            }
-
-            try {
-                String[] loopArr = config.getArray("loopFrames");
-                if (loopArr != null && loopArr.length >= 2) {
-                    loopStartFrame = Integer.parseInt(loopArr[0].trim());
-                    loopEndFrame = Integer.parseInt(loopArr[1].trim());
-                    if ("none".equals(loopMode)) {
-                        loopMode = "range";
-                    }
-                }
-            } catch (Throwable ignored) {
-            }
-
-            if ("none".equals(loopMode) && introStartFrame < 0 && loopStartFrame < 0) {
                 loopMode = "full";
             }
         } else {

@@ -111,39 +111,6 @@ public class SplashScreenPlugin: CAPPlugin, CAPBridgedPlugin {
             if self.loopMode == "none" && self.introStartFrame < 0 && self.loopStartFrame < 0 && animDict["loop"] == nil {
                 self.loopMode = "full"
             }
-        } else if let rawAnimRoot = config.getString("animationPath") {
-            // 2. Retrocompatibilidade: campos na raiz
-            hasAnimation = true
-            var rawAnim = rawAnimRoot
-            if rawAnim.hasSuffix(".json") {
-                rawAnim = String(rawAnim.dropLast(5))
-            }
-            self.animationPath = rawAnim
-            self.speed = CGFloat(config.getDouble("speed", 1.0))
-            self.sizeDp = CGFloat(config.getInt("sizeDp", 0))
-            self.fullscreen = config.getBoolean("fullscreen", self.sizeDp <= 0)
-            self.minLoopCycles = config.getInt("minLoopCycles", 0)
-            self.loopMode = config.getString("loopMode", "none")
-            if config.getBoolean("loop", false) {
-                self.loopMode = "full"
-            }
-
-            if let introArr = config.getArray("introFrames") as? [NSNumber], introArr.count >= 2 {
-                self.introStartFrame = CGFloat(truncating: introArr[0])
-                self.introEndFrame = CGFloat(truncating: introArr[1])
-            }
-
-            if let loopArr = config.getArray("loopFrames") as? [NSNumber], loopArr.count >= 2 {
-                self.loopStartFrame = CGFloat(truncating: loopArr[0])
-                self.loopEndFrame = CGFloat(truncating: loopArr[1])
-                if self.loopMode == "none" {
-                    self.loopMode = "range"
-                }
-            }
-
-            if self.loopMode == "none" && self.introStartFrame < 0 && self.loopStartFrame < 0 {
-                self.loopMode = "full"
-            }
         } else {
             self.hasAnimation = false
         }
