@@ -309,12 +309,3 @@ public class SplashScreenPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 }
 
-/**
- * Backward compatibility aliases for legacy Objective-C / Swift imports
- */
-@objc(LaylaLottieSplash)
-public class LaylaLottieSplash: SplashScreenPlugin {}
-
-@objc(LottieSplashPlugin)
-open class LottieSplashPlugin: SplashScreenPlugin {}
-

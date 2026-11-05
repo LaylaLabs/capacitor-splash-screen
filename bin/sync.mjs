@@ -61,7 +61,14 @@ function parseSplashConfig(projectRoot) {
     try {
       const parsed = JSON.parse(raw);
       const splash = parsed.plugins?.LaylaSplashScreen || parsed.plugins?.LaylaLottieSplash;
-      return splash || null;
+      if (splash) {
+        return {
+          backgroundColor: splash.backgroundColor,
+          iconPath: splash.iconPath,
+          animationPath: splash.animation?.path || splash.animationPath,
+        };
+      }
+      return null;
     } catch {
       return null;
     }
@@ -139,6 +146,37 @@ function syncAndroid(projectRoot, config) {
       console.log(`  ✓ Atualizado drawable do splash.xml para @drawable/${iconName}`);
     }
   }
+
+  // 3. Sincroniza arquivo de animação Lottie em src/main/assets/
+  if (config.animationPath) {
+    const fileName = path.basename(config.animationPath);
+    const searchDirs = [
+      path.join(projectRoot, 'public'),
+      path.join(projectRoot, 'public', 'splashs'),
+      path.join(projectRoot, 'assets'),
+      projectRoot,
+    ];
+
+    let foundSrc = null;
+    for (const dir of searchDirs) {
+      const candidate = path.join(dir, fileName);
+      if (fs.existsSync(candidate)) {
+        foundSrc = candidate;
+        break;
+      }
+    }
+
+    if (foundSrc) {
+      const targetAssetsDir = path.join(projectRoot, 'android', 'app', 'src', 'main', 'assets');
+      if (fs.existsSync(targetAssetsDir)) {
+        const dest = path.join(targetAssetsDir, fileName);
+        fs.copyFileSync(foundSrc, dest);
+        console.log(`  ✓ Sincronizado asset Lottie ${fileName} para ${dest}`);
+      }
+    } else {
+      console.warn(`  ⚠️ Arquivo de animação ${fileName} não encontrado nas pastas do projeto`);
+    }
+  }
 }
 
 function syncIOS(projectRoot, config) {
@@ -147,7 +185,34 @@ function syncIOS(projectRoot, config) {
     return;
   }
   console.log(`[layla-splash] Verificando recursos iOS em: ${iosAppDir}`);
-  // iOS launch screen sync hooks can be extended here
+
+  if (config.animationPath) {
+    const fileName = path.basename(config.animationPath);
+    const searchDirs = [
+      path.join(projectRoot, 'public'),
+      path.join(projectRoot, 'public', 'splashs'),
+      path.join(projectRoot, 'assets'),
+      projectRoot,
+    ];
+
+    let foundSrc = null;
+    for (const dir of searchDirs) {
+      const candidate = path.join(dir, fileName);
+      if (fs.existsSync(candidate)) {
+        foundSrc = candidate;
+        break;
+      }
+    }
+
+    if (foundSrc) {
+      const targetIOSDir = path.join(iosAppDir, 'App');
+      if (fs.existsSync(targetIOSDir)) {
+        const dest = path.join(targetIOSDir, fileName);
+        fs.copyFileSync(foundSrc, dest);
+        console.log(`  ✓ Sincronizado asset Lottie ${fileName} para iOS em ${dest}`);
+      }
+    }
+  }
 }
 
 function run() {

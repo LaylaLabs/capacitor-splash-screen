@@ -225,9 +225,23 @@ public class SplashScreenPlugin extends Plugin {
                     assetName = assetName + ".json";
                 }
 
+                // Fallback resiliente: verifica se está na raiz de assets/ ou sob public/ (padrão web Capacitor)
+                String resolvedAsset = assetName;
+                try {
+                    getActivity().getAssets().open(resolvedAsset).close();
+                } catch (Throwable e) {
+                    if (!resolvedAsset.startsWith("public/")) {
+                        try {
+                            getActivity().getAssets().open("public/" + resolvedAsset).close();
+                            resolvedAsset = "public/" + resolvedAsset;
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                }
+
                 // Modo Lottie Animado
                 lottieView = new LottieAnimationView(getActivity());
-                lottieView.setAnimation(assetName);
+                lottieView.setAnimation(resolvedAsset);
                 lottieView.setSpeed(speed);
 
                 final boolean hasIntro = (introStartFrame >= 0 && introEndFrame > introStartFrame);
