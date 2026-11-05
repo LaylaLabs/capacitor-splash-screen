@@ -17,9 +17,25 @@ export interface SplashAnimationConfig {
 
   /**
    * Dimension in Density-independent Pixels (DP) for the centered Lottie animation view.
-   * @default 260
+   * If omitted or <= 0, or if `fullscreen: true` is set, the animation view expands to MATCH_PARENT
+   * with FIT_CENTER scaling, allowing expanding waves, particles, and full-screen effects.
+   * @default 0 (fullscreen: true)
    */
   sizeDp?: number;
+
+  /**
+   * If true, the animation view expands to fill the entire screen (MATCH_PARENT)
+   * with aspect fit scaling, preventing clipping of expanding elements, waves, or ripples.
+   * @default true (when sizeDp is omitted or <= 0)
+   */
+  fullscreen?: boolean;
+
+  /**
+   * If true, loops the entire animation continuously from frame 0 to end while waiting
+   * for the app to be ready. Shortcut for `loopMode: 'full'`.
+   * @default true (when introFrames and loopFrames are not specified)
+   */
+  loop?: boolean;
 
   /**
    * Intro animation frames [startFrame, endFrame].

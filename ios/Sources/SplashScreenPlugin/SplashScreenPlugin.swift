@@ -41,7 +41,8 @@ public class SplashScreenPlugin: CAPPlugin, CAPBridgedPlugin {
     private var loopStartFrame: CGFloat = -1
     private var loopEndFrame: CGFloat = -1
     private var speed: CGFloat = 1.0
-    private var sizeDp: CGFloat = 260.0
+    private var sizeDp: CGFloat = 0.0
+    private var fullscreen: Bool = true
 
     override public func load() {
         super.load()
@@ -76,9 +77,23 @@ public class SplashScreenPlugin: CAPPlugin, CAPBridgedPlugin {
             }
             self.animationPath = rawAnim
             self.speed = CGFloat(animDict["speed"] as? Double ?? 1.0)
-            self.sizeDp = CGFloat(animDict["sizeDp"] as? Int ?? 260)
+            
+            if let explicitFullscreen = animDict["fullscreen"] as? Bool {
+                self.fullscreen = explicitFullscreen
+                self.sizeDp = CGFloat(animDict["sizeDp"] as? Int ?? 0)
+            } else if let explicitSize = animDict["sizeDp"] as? Int {
+                self.sizeDp = CGFloat(explicitSize)
+                self.fullscreen = (explicitSize <= 0)
+            } else {
+                self.fullscreen = true
+                self.sizeDp = 0
+            }
+
             self.minLoopCycles = animDict["minLoopCycles"] as? Int ?? config.getInt("minLoopCycles", 0)
             self.loopMode = animDict["loopMode"] as? String ?? "none"
+            if let loopBool = animDict["loop"] as? Bool {
+                self.loopMode = loopBool ? "full" : "none"
+            }
 
             if let introArr = animDict["introFrames"] as? [NSNumber], introArr.count >= 2 {
                 self.introStartFrame = CGFloat(truncating: introArr[0])
@@ -88,22 +103,30 @@ public class SplashScreenPlugin: CAPPlugin, CAPBridgedPlugin {
             if let loopArr = animDict["loopFrames"] as? [NSNumber], loopArr.count >= 2 {
                 self.loopStartFrame = CGFloat(truncating: loopArr[0])
                 self.loopEndFrame = CGFloat(truncating: loopArr[1])
-                if self.loopMode == "none" {
+                if self.loopMode == "none" && animDict["loop"] == nil {
                     self.loopMode = "range"
                 }
             }
+
+            if self.loopMode == "none" && self.introStartFrame < 0 && self.loopStartFrame < 0 && animDict["loop"] == nil {
+                self.loopMode = "full"
+            }
         } else if let rawAnimRoot = config.getString("animationPath") {
             // 2. Retrocompatibilidade: campos na raiz
-            self.hasAnimation = true
+            hasAnimation = true
             var rawAnim = rawAnimRoot
             if rawAnim.hasSuffix(".json") {
                 rawAnim = String(rawAnim.dropLast(5))
             }
             self.animationPath = rawAnim
             self.speed = CGFloat(config.getDouble("speed", 1.0))
-            self.sizeDp = CGFloat(config.getInt("sizeDp", 260))
+            self.sizeDp = CGFloat(config.getInt("sizeDp", 0))
+            self.fullscreen = config.getBoolean("fullscreen", self.sizeDp <= 0)
             self.minLoopCycles = config.getInt("minLoopCycles", 0)
             self.loopMode = config.getString("loopMode", "none")
+            if config.getBoolean("loop", false) {
+                self.loopMode = "full"
+            }
 
             if let introArr = config.getArray("introFrames") as? [NSNumber], introArr.count >= 2 {
                 self.introStartFrame = CGFloat(truncating: introArr[0])
@@ -116,6 +139,10 @@ public class SplashScreenPlugin: CAPPlugin, CAPBridgedPlugin {
                 if self.loopMode == "none" {
                     self.loopMode = "range"
                 }
+            }
+
+            if self.loopMode == "none" && self.introStartFrame < 0 && self.loopStartFrame < 0 {
+                self.loopMode = "full"
             }
         } else {
             self.hasAnimation = false
@@ -156,19 +183,26 @@ public class SplashScreenPlugin: CAPPlugin, CAPBridgedPlugin {
             animation.contentMode = .scaleAspectFit
             animation.animationSpeed = speed
 
-            let size: CGFloat = sizeDp
-            animation.frame = CGRect(
-                x: (targetContainer.bounds.width - size) / 2.0,
-                y: (targetContainer.bounds.height - size) / 2.0,
-                width: size,
-                height: size
-            )
-            animation.autoresizingMask = [
-                .flexibleTopMargin,
-                .flexibleBottomMargin,
-                .flexibleLeftMargin,
-                .flexibleRightMargin
-            ]
+            if fullscreen || sizeDp <= 0 {
+                animation.frame = overlay.bounds
+                animation.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                animation.clipsToBounds = false
+                overlay.clipsToBounds = false
+            } else {
+                let size: CGFloat = sizeDp
+                animation.frame = CGRect(
+                    x: (targetContainer.bounds.width - size) / 2.0,
+                    y: (targetContainer.bounds.height - size) / 2.0,
+                    width: size,
+                    height: size
+                )
+                animation.autoresizingMask = [
+                    .flexibleTopMargin,
+                    .flexibleBottomMargin,
+                    .flexibleLeftMargin,
+                    .flexibleRightMargin
+                ]
+            }
 
             overlay.addSubview(animation)
             targetContainer.addSubview(overlay)
