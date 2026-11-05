@@ -18,6 +18,9 @@ public class SplashScreenPlugin: CAPPlugin, CAPBridgedPlugin {
     private var lottieView: LottieAnimationView?
     private var isAppReady = false
     private var hasCompletedIntro = false
+    private var isInLoop = false
+    private var completedLoopCycles = 0
+    private var minLoopCycles = 0
     private var isDismissing = false
 
     // Configurações globais
@@ -74,6 +77,7 @@ public class SplashScreenPlugin: CAPPlugin, CAPBridgedPlugin {
             self.animationPath = rawAnim
             self.speed = CGFloat(animDict["speed"] as? Double ?? 1.0)
             self.sizeDp = CGFloat(animDict["sizeDp"] as? Int ?? 260)
+            self.minLoopCycles = animDict["minLoopCycles"] as? Int ?? config.getInt("minLoopCycles", 0)
             self.loopMode = animDict["loopMode"] as? String ?? "none"
 
             if let introArr = animDict["introFrames"] as? [NSNumber], introArr.count >= 2 {
@@ -98,6 +102,7 @@ public class SplashScreenPlugin: CAPPlugin, CAPBridgedPlugin {
             self.animationPath = rawAnim
             self.speed = CGFloat(config.getDouble("speed", 1.0))
             self.sizeDp = CGFloat(config.getInt("sizeDp", 260))
+            self.minLoopCycles = config.getInt("minLoopCycles", 0)
             self.loopMode = config.getString("loopMode", "none")
 
             if let introArr = config.getArray("introFrames") as? [NSNumber], introArr.count >= 2 {
@@ -172,28 +177,23 @@ public class SplashScreenPlugin: CAPPlugin, CAPBridgedPlugin {
             self.lottieView = animation
 
             let hasIntro = (introStartFrame >= 0 && introEndFrame > introStartFrame)
+            let hasLoop = (loopMode == "range" && loopStartFrame >= 0 && loopEndFrame > loopStartFrame) || (loopMode == "full")
 
             if hasIntro {
                 animation.play(fromFrame: introStartFrame, toFrame: introEndFrame, loopMode: .playOnce) { [weak self] completed in
-                    guard let self = self, !self.isDismissing else { return }
+                    guard let self = self, !self.isDismissing, !self.isInLoop else { return }
                     self.hasCompletedIntro = true
 
-                    if self.isAppReady || self.autoDismiss {
-                        self.dismissSplashWithFade()
+                    if hasLoop && (self.completedLoopCycles < self.minLoopCycles || (!self.isAppReady && !self.autoDismiss)) {
+                        self.startLoopPhase()
                     } else {
-                        if self.loopMode == "range" && self.loopStartFrame >= 0 && self.loopEndFrame > self.loopStartFrame {
-                            self.lottieView?.play(fromFrame: self.loopStartFrame, toFrame: self.loopEndFrame, loopMode: .loop, completion: nil)
-                        } else if self.loopMode == "full" {
-                            self.lottieView?.play(loopMode: .loop, completion: nil)
-                        }
+                        self.dismissSplashWithFade()
                     }
                 }
             } else {
                 self.hasCompletedIntro = true
-                if loopMode == "range" && loopStartFrame >= 0 && loopEndFrame > loopStartFrame {
-                    animation.play(fromFrame: loopStartFrame, toFrame: loopEndFrame, loopMode: .loop, completion: nil)
-                } else if loopMode == "full" {
-                    animation.play(loopMode: .loop, completion: nil)
+                if hasLoop {
+                    self.startLoopPhase()
                 } else {
                     animation.play(loopMode: .playOnce) { [weak self] _ in
                         if self?.autoDismiss == true {
@@ -210,12 +210,40 @@ public class SplashScreenPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    private func startLoopPhase() {
+        guard !isDismissing, let lottie = lottieView else { return }
+        isInLoop = true
+
+        let from = (loopMode == "range" && loopStartFrame >= 0) ? loopStartFrame : 0
+        let to = (loopMode == "range" && loopEndFrame > loopStartFrame) ? loopEndFrame : (lottie.animation?.endFrame ?? 100)
+
+        playNextLoopCycle(from: from, to: to)
+    }
+
+    private func playNextLoopCycle(from: CGFloat, to: CGFloat) {
+        guard !isDismissing, let lottie = lottieView else { return }
+
+        lottie.play(fromFrame: from, toFrame: to, loopMode: .playOnce) { [weak self] completed in
+            guard let self = self, !self.isDismissing else { return }
+            self.completedLoopCycles += 1
+
+            if (self.isAppReady || self.autoDismiss) && self.completedLoopCycles >= self.minLoopCycles {
+                self.dismissSplashWithFade()
+            } else {
+                self.playNextLoopCycle(from: from, to: to)
+            }
+        }
+    }
+
     @objc func notifyAppReady(_ call: CAPPluginCall) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             self.isAppReady = true
             if self.hasCompletedIntro {
-                self.dismissSplashWithFade()
+                let hasLoop = (self.loopMode == "range" && self.loopStartFrame >= 0 && self.loopEndFrame > self.loopStartFrame) || (self.loopMode == "full")
+                if !hasLoop || self.completedLoopCycles >= self.minLoopCycles {
+                    self.dismissSplashWithFade()
+                }
             }
         }
         call.resolve()
@@ -233,6 +261,8 @@ public class SplashScreenPlugin: CAPPlugin, CAPBridgedPlugin {
             guard let self = self else { return }
             self.isDismissing = false
             self.hasCompletedIntro = false
+            self.isInLoop = false
+            self.completedLoopCycles = 0
             self.isAppReady = false
             self.setupSplash()
         }

@@ -43,6 +43,14 @@ export interface SplashAnimationConfig {
    * @example [130, 310]
    */
   loopFrames?: [number, number];
+
+  /**
+   * Minimum number of full loop cycles to play before allowing dismissal when app is ready.
+   * If set to 1, the animation is guaranteed to play the intro AND at least one full loop cycle
+   * before fading out.
+   * @default 0
+   */
+  minLoopCycles?: number;
 }
 
 export interface SplashScreenConfig {
