@@ -1,3 +1,5 @@
+import type {} from '@capacitor/cli';
+
 export type LottieLoopMode = 'none' | 'full' | 'range';
 
 export interface SplashAnimationConfig {
@@ -162,3 +164,18 @@ export interface SplashScreenPlugin {
 // Backwards-compatibility aliases
 export type LottieSplashConfig = SplashScreenConfig;
 export type LottieSplashPlugin = SplashScreenPlugin;
+
+declare module '@capacitor/cli' {
+  interface PluginsConfig {
+    /**
+     * Unified native splash screen plugin configuration.
+     * Manages cold-start launch assets, native Android/iOS 0ms handshake, Lottie animations, and smooth transitions.
+     */
+    LaylaSplashScreen?: SplashScreenConfig;
+
+    /**
+     * @deprecated Legacy alias for backwards compatibility
+     */
+    LottieSplash?: SplashScreenConfig;
+  }
+}
