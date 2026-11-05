@@ -3,9 +3,12 @@ package com.laylalabs.capacitor.splashscreen;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.graphics.Color;
+import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -118,16 +121,8 @@ public class SplashScreenPlugin extends Plugin {
             }
             speed = (float) animObj.optDouble("speed", (double) defaultSpeed);
 
-            if (animObj.has("fullscreen")) {
-                fullscreen = animObj.optBoolean("fullscreen", true);
-                sizeDp = animObj.optInt("sizeDp", 0);
-            } else if (animObj.has("sizeDp")) {
-                sizeDp = animObj.optInt("sizeDp", 0);
-                fullscreen = (sizeDp <= 0);
-            } else {
-                fullscreen = true;
-                sizeDp = 0;
-            }
+            sizeDp = animObj.optInt("sizeDp", config.getInt("sizeDp", 0));
+            fullscreen = animObj.optBoolean("fullscreen", config.getBoolean("fullscreen", sizeDp <= 0));
 
             loopMode = animObj.optString("loopMode", config.getString("loopMode", "none"));
             if (animObj.has("loop")) {
@@ -274,25 +269,19 @@ public class SplashScreenPlugin extends Plugin {
                     }
                 }
 
-                // Modo Lottie Animado
+                // Modo Lottie Animado: A view SEMPRE ocupa MATCH_PARENT x MATCH_PARENT
+                // para que a tela inteira esteja 100% desimpedida para ondas de choque,
+                // partículas e raios se expandirem sem qualquer corte de borda ou janela.
                 lottieView = new LottieAnimationView(getActivity());
                 lottieView.setSpeed(speed);
 
-                FrameLayout.LayoutParams params;
-                if (fullscreen || sizeDp <= 0) {
-                    params = new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    );
-                    lottieView.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                } else {
-                    float density = getActivity().getResources().getDisplayMetrics().density;
-                    int sizeInPx = (int) (sizeDp * density);
-                    params = new FrameLayout.LayoutParams(sizeInPx, sizeInPx);
-                    params.gravity = Gravity.CENTER;
-                }
+                FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                );
+                params.gravity = Gravity.CENTER;
 
-                // Previne cortes visuais de ondas de choque, partículas ou efeitos que se expandem
+                // Desativa qualquer recorte interno do Lottie ou do container Android
                 try {
                     lottieView.setClipToCompositionBounds(false);
                 } catch (Throwable ignored) {
@@ -311,6 +300,7 @@ public class SplashScreenPlugin extends Plugin {
                     .addListener(composition -> {
                         if (isDismissing || lottieView == null) return;
                         lottieView.setComposition(composition);
+                        applyAnimationSizing(composition);
                         startAnimationSequence();
                     })
                     .addFailureListener(e -> {
@@ -329,6 +319,68 @@ public class SplashScreenPlugin extends Plugin {
             Log.e(TAG, "Falha ao inicializar LaylaSplashScreen: " + t.getMessage(), t);
             hasCompletedIntro = true;
             setReady(true);
+        }
+    }
+
+    /**
+     * Aplica o dimensionamento da animação preservando a tela inteira sem recortes.
+     * Quando sizeDp > 0 (ex: 260dp), o elemento central da animação mantém o tamanho
+     * exato configurado, mas através de ScaleType.MATRIX o canvas da View cobre toda
+     * a tela (MATCH_PARENT x MATCH_PARENT), permitindo que efeitos expansivos corram
+     * livremente até qualquer borda da tela.
+     */
+    private void applyAnimationSizing(LottieComposition composition) {
+        if (lottieView == null || getActivity() == null || composition == null) return;
+
+        if (sizeDp > 0) {
+            lottieView.setScaleType(ImageView.ScaleType.MATRIX);
+
+            Runnable updateMatrix = () -> {
+                if (lottieView == null || getActivity() == null) return;
+
+                int viewWidth = lottieView.getWidth();
+                int viewHeight = lottieView.getHeight();
+
+                if (viewWidth <= 0 || viewHeight <= 0) {
+                    DisplayMetrics dm = getActivity().getResources().getDisplayMetrics();
+                    viewWidth = dm.widthPixels;
+                    viewHeight = dm.heightPixels;
+                }
+
+                float density = getActivity().getResources().getDisplayMetrics().density;
+                float targetSizePx = sizeDp * density;
+
+                Rect compBounds = composition.getBounds();
+                float compW = (compBounds != null && compBounds.width() > 0) ? (float) compBounds.width() : 512f;
+                float compH = (compBounds != null && compBounds.height() > 0) ? (float) compBounds.height() : 512f;
+
+                float scale = targetSizePx / Math.max(compW, compH);
+                float renderedW = compW * scale;
+                float renderedH = compH * scale;
+
+                float dx = (viewWidth - renderedW) / 2.0f;
+                float dy = (viewHeight - renderedH) / 2.0f;
+
+                Matrix matrix = new Matrix();
+                matrix.setScale(scale, scale);
+                matrix.postTranslate(dx, dy);
+
+                lottieView.setImageMatrix(matrix);
+            };
+
+            updateMatrix.run();
+
+            lottieView.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+                int w = right - left;
+                int h = bottom - top;
+                int oldW = oldRight - oldLeft;
+                int oldH = oldBottom - oldTop;
+                if (w != oldW || h != oldH) {
+                    updateMatrix.run();
+                }
+            });
+        } else {
+            lottieView.setScaleType(ImageView.ScaleType.FIT_CENTER);
         }
     }
 
