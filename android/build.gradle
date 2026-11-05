@@ -19,7 +19,7 @@ buildscript {
 apply plugin: 'com.android.library'
 
 android {
-    namespace "com.laylalabs.capacitor.lottiesplash"
+    namespace "com.laylalabs.capacitor.splashscreen"
     compileSdk project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 35
     defaultConfig {
         minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 23

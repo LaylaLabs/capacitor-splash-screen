@@ -33,6 +33,3 @@ export class LaylaSplashScreenWeb extends WebPlugin implements SplashScreenPlugi
     return this.config;
   }
 }
-
-// Backwards-compatibility alias
-export class LaylaLottieSplashWeb extends LaylaSplashScreenWeb {}

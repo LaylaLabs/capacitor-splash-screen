@@ -60,12 +60,12 @@ function parseSplashConfig(projectRoot) {
   if (configPath.endsWith('.json')) {
     try {
       const parsed = JSON.parse(raw);
-      const splash = parsed.plugins?.LaylaSplashScreen || parsed.plugins?.LaylaLottieSplash;
+      const splash = parsed.plugins?.LaylaSplashScreen;
       if (splash) {
         return {
           backgroundColor: splash.backgroundColor,
           iconPath: splash.iconPath,
-          animationPath: splash.animation?.path || splash.animationPath,
+          animationPath: splash.animation?.path,
         };
       }
       return null;
@@ -76,7 +76,7 @@ function parseSplashConfig(projectRoot) {
 
   // Regex extraction for TS/JS configuration to avoid heavy runtime dependencies
   const splashBlockMatch = raw.match(
-    /(?:LaylaSplashScreen|LaylaLottieSplash)\s*:\s*\{([\s\S]*?)\n\s*\},?\s*(?:[A-Z][a-zA-Z0-9_]*\s*:|\})/
+    /LaylaSplashScreen\s*:\s*\{([\s\S]*?)\n\s*\},?\s*(?:[A-Z][a-zA-Z0-9_]*\s*:|\})/
   );
 
   if (!splashBlockMatch) {
@@ -87,7 +87,7 @@ function parseSplashConfig(projectRoot) {
   const block = splashBlockMatch[1];
   const bgMatch = block.match(/backgroundColor\s*:\s*["']([^"']+)["']/);
   const iconMatch = block.match(/iconPath\s*:\s*["']([^"']+)["']/);
-  const animPathMatch = block.match(/(?:path|animationPath)\s*:\s*["']([^"']+)["']/);
+  const animPathMatch = block.match(/path\s*:\s*["']([^"']+)["']/);
 
   return {
     backgroundColor: bgMatch ? bgMatch[1] : undefined,
